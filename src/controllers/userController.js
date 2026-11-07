@@ -19,7 +19,12 @@ const crearUsuario = async (req, res) => {
       'INSERT INTO usuarios (nombre, email, password) VALUES ($1, $2, $3) RETURNING *',
       [nombre, email, password]
     );
-    res.status(201).json(nuevoUsuario.rows[0]);
+    
+    // Devolvemos el formato exacto que espera el frontend (con la propiedad "usuario")
+    res.status(201).json({
+      mensaje: 'Usuario registrado con éxito',
+      usuario: nuevoUsuario.rows[0]
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al registrar el usuario (correo posiblemente duplicado)' });
@@ -39,8 +44,11 @@ const loginUsuario = async (req, res) => {
       return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
     }
 
-    // Si coincide, devolvemos los datos del usuario
-    res.status(200).json(resultado.rows[0]);
+    // Devolvemos también el formato con "usuario" para que el login y registro funcionen igual
+    res.status(200).json({
+      mensaje: 'Login exitoso',
+      usuario: resultado.rows[0]
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error en el servidor al iniciar sesión' });
