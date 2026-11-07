@@ -1,0 +1,14 @@
+{
+  "name": "mi-backend-practica",
+  "version": "1.0.0",
+  "description": "Mini CMS Editorial",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  }
+}

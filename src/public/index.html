@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Mini CMS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { 
+            background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8)), 
+                        url('https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1920&auto=format&fit=crop') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .login-wrapper {
+            display: flex;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            width: 100%;
+            max-width: 900px;
+            min-height: 500px;
+        }
+
+        @media (max-width: 768px) {
+            .login-wrapper { flex-direction: column; max-width: 450px; }
+            .hero-section { padding: 30px !important; text-align: center; }
+        }
+
+        /* Sección Izquierda: Título y Bienvenida */
+        .hero-section {
+            flex: 1;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .hero-section h1 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #f8fafc;
+        }
+
+        .hero-section p {
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: rgba(37, 99, 235, 0.2);
+            color: #60a5fa;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            width: fit-content;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        /* Sección Derecha: Formulario */
+        .form-section {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab {
+            padding: 10px 0;
+            cursor: pointer;
+            font-weight: 600;
+            color: #64748b;
+            flex: 1;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+            margin-bottom: -2px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background-color: #1d4ed8;
+        }
+
+        .mensaje {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+        
+        <!-- Panel Izquierdo con Título y Contexto -->
+        <div class="hero-section">
+            <span class="hero-badge">Plataforma Editorial</span>
+            <h1>Mini CMS Profesional</h1>
+            <p>Sistema integral de redacción, gestión de contenidos y sincronización directa con bases de datos relacionales en PostgreSQL.</p>
+            <div style="font-size: 12px; color: #64748b;">
+                © 2026 • Control de Artículos y Autores
+            </div>
+        </div>
+
+        <!-- Panel Derecho: Formulario de Acceso -->
+        <div class="form-section">
+            <div class="tabs">
+                <div class="tab active" id="tabLogin" onclick="cambiarTab('login')">Iniciar Sesión</div>
+                <div class="tab" id="tabRegister" onclick="cambiarTab('register')">Registrarse</div>
+            </div>
+
+            <!-- Formulario de Login -->
+            <form id="authForm">
+                <div id="nombreField" class="form-group hidden">
+                    <label>Nombre Completo:</label>
+                    <input type="text" id="nombre" placeholder="Tu nombre">
+                </div>
+
+                <div class="form-group">
+                    <label>Correo Electrónico:</label>
+                    <input type="email" id="email" required placeholder="correo@revista.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Contraseña:</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+
+                <button type="submit" class="btn-submit" id="btnSubmitText">Entrar al Sistema</button>
+            </form>
+
+            <div class="mensaje" id="mensajeAuth"></div>
+        </div>
+
+    </div>
+
+    <script>
+        let esRegistro = false;
+
+        function cambiarTab(tipo) {
+            esRegistro = (tipo === 'register');
+            const nombreField = document.getElementById('nombreField');
+            const tabLogin = document.getElementById('tabLogin');
+            const tabRegister = document.getElementById('tabRegister');
+            const btnSubmitText = document.getElementById('btnSubmitText');
+            const mensaje = document.getElementById('mensajeAuth');
+
+            mensaje.innerText = '';
+
+            if (esRegistro) {
+                tabRegister.classList.add('active');
+                tabLogin.classList.remove('active');
+                nombreField.classList.remove('hidden');
+                document.getElementById('nombre').setAttribute('required', 'true');
+                btnSubmitText.innerText = 'Registrar Cuenta';
+            } else {
+                tabLogin.classList.add('active');
+                tabRegister.classList.remove('active');
+                nombreField.classList.add('hidden');
+                document.getElementById('nombre').removeAttribute('required');
+                btnSubmitText.innerText = 'Entrar al Sistema';
+            }
+        }
+
+        const form = document.getElementById('authForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const nombre = document.getElementById('nombre').value;
+            const mensaje = document.getElementById('mensajeAuth');
+
+            const url = esRegistro ? '/api/usuarios/register' : '/api/usuarios/login';
+            const payload = esRegistro ? { nombre, email, password } : { email, password };
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    mensaje.style.color = '#16a34a';
+                    mensaje.innerText = esRegistro ? '¡Registro exitoso! Redirigiendo...' : '¡Bienvenido! Entrando al panel...';
+                    
+                    localStorage.setItem('usuario_id', data.usuario.id);
+                    localStorage.setItem('usuario_nombre', data.usuario.nombre);
+
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
+                } else {
+                    mensaje.style.color = '#dc2626';
+                    mensaje.innerText = data.error || 'Ocurrió un error en la autenticación';
+                }
+            } catch (err) {
+                console.error(err);
+                mensaje.style.color = '#dc2626';
+                mensaje.innerText = 'Error de conexión con el servidor';
+            }
+        });
+    </script>
+</body>
+</html>

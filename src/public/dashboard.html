@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Redacción - Mini CMS</title>
+    
+    <!-- Librería jsPDF para generar archivos PDF desde el navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { 
+            background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85)), 
+                        url('https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1920&auto=format&fit=crop') no-repeat center center fixed;
+            background-size: cover;
+            color: #333; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+        }
+
+        header { 
+            background-color: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(8px);
+            padding: 15px 30px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+        }
+        header h1 { font-size: 20px; color: #1e293b; }
+        .user-info { display: flex; align-items: center; gap: 15px; font-size: 14px; color: #334155; font-weight: 600; }
+        .btn-salir { background-color: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+        .btn-salir:hover { background-color: #dc2626; }
+
+        .main-container { display: flex; gap: 25px; padding: 30px; max-width: 1400px; margin: 0 auto; width: 100%; flex: 1; }
+        @media (max-width: 900px) { .main-container { flex-direction: column; } }
+
+        .card { 
+            background: rgba(255, 255, 255, 0.96); 
+            backdrop-filter: blur(10px);
+            padding: 25px; 
+            border-radius: 14px; 
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3); 
+        }
+        .card-form { flex: 1; max-width: 400px; }
+        .card-table { flex: 2.2; }
+
+        .card h2 { margin-bottom: 15px; font-size: 18px; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #475569; font-size: 13px; font-weight: 600; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; background: #fff; }
+        input:focus, textarea:focus, select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        textarea { resize: vertical; height: 100px; }
+        
+        button[type="submit"] { width: 100%; padding: 12px; background-color: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button[type="submit"]:hover { background-color: #1d4ed8; }
+
+        .mensaje { text-align: center; margin-top: 12px; font-size: 13px; font-weight: bold; }
+
+        .table-responsive { overflow-x: auto; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; white-space: nowrap; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f1f5f9; color: #475569; font-weight: 600; }
+        td { color: #1e293b; }
+        
+        .tag-categoria { background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; display: inline-block; text-transform: capitalize; }
+        .tag-estado { background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; display: inline-block; }
+        
+        .acciones-container { display: flex; gap: 6px; }
+        .btn-accion { border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s; }
+        .btn-pdf { background: #e0e7ff; color: #3730a3; }
+        .btn-pdf:hover { background: #c7d2fe; }
+        .btn-modificar { background: #fef08a; color: #854d0e; }
+        .btn-modificar:hover { background: #fde047; }
+        .btn-eliminar { background: #fee2e2; color: #dc2626; }
+        .btn-eliminar:hover { background: #dc2626; color: white; }
+        .no-data { text-align: center; color: #94a3b8; padding: 25px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📰 Mini CMS - Panel de Redacción</h1>
+        <div class="user-info">
+            <span id="saludoUsuario">👤 Redactor</span>
+            <button class="btn-salir" onclick="localStorage.clear(); window.location.href='/'">Cerrar Sesión</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- Columna Izquierda: Formulario -->
+        <div class="card card-form">
+            <h2 id="tituloFormulario">Redactar Nuevo Artículo</h2>
+            <form id="registroDatoForm">
+                <input type="hidden" id="editandoId" value="">
+                
+                <div class="form-group">
+                    <label>Titular del Artículo:</label>
+                    <input type="text" id="titulo" required placeholder="Ej: Avances tecnológicos en 2026">
+                </div>
+
+                <div class="form-group">
+                    <label>Sección / Categoría:</label>
+                    <select id="categoria" required>
+                        <option value="">Cargando categorías...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado de Publicación:</label>
+                    <select id="estado" required>
+                        <option value="Publicado">Publicado</option>
+                        <option value="Borrador">Borrador</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Cuerpo / Contenido:</label>
+                    <textarea id="descripcion" required placeholder="Escribe el contenido completo..."></textarea>
+                </div>
+
+                <button type="submit" id="btnSubmit">Publicar Artículo en BD</button>
+            </form>
+            <div class="mensaje" id="mensajeRespuesta"></div>
+        </div>
+
+        <!-- Columna Derecha: Tabla de Artículos -->
+        <div class="card card-table">
+            <h2>Artículos en la Base de Datos</h2>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 10px;">Artículos sincronizados desde PostgreSQL:</p>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Autor</th>
+                            <th>Categoría</th>
+                            <th>Titular</th>
+                            <th>Contenido</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaRegistros">
+                        <tr><td colspan="7" class="no-data">Cargando publicaciones...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const usuarioId = localStorage.getItem('usuario_id');
+        const usuarioNombre = localStorage.getItem('usuario_nombre');
+
+        if (!usuarioId) {
+            window.location.href = '/';
+        } else {
+            document.getElementById('saludoUsuario').innerText = `👤 ${usuarioNombre}`;
+        }
+
+        // Cargar Categorías Dinámicamente desde la BD
+        async function cargarCategorias() {
+            try {
+                const res = await fetch('/api/categorias');
+                const categorias = await res.json();
+                const select = document.getElementById('categoria');
+                select.innerHTML = '<option value="">-- Selecciona una categoría --</option>';
+                categorias.forEach(cat => {
+                    select.innerHTML += `<option value="${cat.nombre}">${cat.nombre}</option>`;
+                });
+            } catch (err) {
+                console.error('Error al cargar categorías:', err);
+            }
+        }
+
+        // Cargar Artículos en la Tabla
+        async function cargarRegistros() {
+            try {
+                const res = await fetch('/api/registros');
+                const registros = await res.json();
+                const tbody = document.getElementById('tablaRegistros');
+                
+                if (registros.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="no-data">No hay artículos publicados todavía.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                registros.forEach(reg => {
+                    const cat = reg.categoria || 'General';
+                    const est = reg.estado || 'Publicado';
+                    const tituloEscapado = reg.titulo.replace(/'/g, "\\'");
+                    const descEscapada = reg.descripcion.replace(/'/g, "\\'").replace(/\n/g, " ");
+
+                    const fila = `<tr>
+                        <td><b>#${reg.id}</b></td>
+                        <td>ID: ${reg.usuario_id}</td>
+                        <td><span class="tag-categoria">${cat}</span></td>
+                        <td><b>${reg.titulo}</b></td>
+                        <td>
+                            <button class="btn-accion btn-pdf" onclick="descargarPDF('${tituloEscapado}', '${cat}', '${est}', '${descEscapada}')">📄 Ver PDF</button>
+                        </td>
+                        <td><span class="tag-estado">${est}</span></td>
+                        <td>
+                            <div class="acciones-container">
+                                <button class="btn-accion btn-modificar" onclick="prepararEdicion(${reg.id}, '${tituloEscapado}', '${cat}', '${est}', '${descEscapada}')">✏️ Modificar</button>
+                                <button class="btn-accion btn-eliminar" onclick="eliminarRegistro(${reg.id})">🗑️ Eliminar</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                    tbody.innerHTML += fila;
+                });
+            } catch (err) {
+                console.error('Error al cargar artículos:', err);
+            }
+        }
+
+        // Generar y Descargar PDF del Artículo
+        function descargarPDF(titulo, categoria, estado, contenido) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Encabezado del Documento
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
+            doc.setTextColor(30, 41, 59); // Color de texto #1e293b
+            doc.text(titulo, 20, 25);
+
+            // Línea separadora
+            doc.setDrawColor(226, 232, 240);
+            doc.setLineWidth(1);
+            doc.line(20, 30, 190, 30);
+
+            // Metadatos (Categoría y Estado)
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(11);
+            doc.setTextColor(3, 105, 161);
+            doc.text(`Categoría: ${categoria}`, 20, 40);
+
+            doc.setTextColor(21, 128, 61);
+            doc.text(`Estado: ${estado}`, 120, 40);
+
+            // Cuerpo del Contenido (con ajuste de texto automático)
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(12);
+            doc.setTextColor(51, 65, 85);
+            
+            const textoDividido = doc.splitTextToSize(contenido, 170); // Ajusta el ancho al margen de la página A4
+            doc.text(textoDividido, 20, 55);
+
+            // Pie de página informativo
+            doc.setFontSize(9);
+            doc.setTextColor(148, 163, 184);
+            doc.text("Documento generado desde Mini CMS - Panel de Redacción", 20, 280);
+
+            // Guardar PDF con el título del artículo
+            const nombreArchivo = titulo.toLowerCase().replace(/[^a-z0-9]/g, "_") + ".pdf";
+            doc.save(nombreArchivo);
+        }
+
+        // Preparar formulario para Modificar
+        function prepararEdicion(id, titulo, categoria, estado, descripcion) {
+            document.getElementById('editandoId').value = id;
+            document.getElementById('titulo').value = titulo;
+            document.getElementById('categoria').value = categoria;
+            document.getElementById('estado').value = estado;
+            document.getElementById('descripcion').value = descripcion;
+
+            document.getElementById('tituloFormulario').innerText = `Modificar Artículo #${id}`;
+            document.getElementById('btnSubmit').innerText = 'Guardar Cambios';
+            document.getElementById('btnSubmit').style.backgroundColor = '#ca8a04';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Eliminar Registro
+        async function eliminarRegistro(id) {
+            if (!confirm(`¿Estás seguro de que deseas eliminar el artículo #${id}?`)) return;
+
+            try {
+                const res = await fetch(`/api/registros/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    cargarRegistros();
+                } else {
+                    alert('No se pudo eliminar el artículo.');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Enviar Formulario (Crear o Actualizar)
+        const form = document.getElementById('registroDatoForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idEditando = document.getElementById('editandoId').value;
+            const titulo = document.getElementById('titulo').value;
+            const categoria = document.getElementById('categoria').value;
+            const estado = document.getElementById('estado').value;
+            const descripcion = document.getElementById('descripcion').value;
+
+            const url = idEditando ? `/api/registros/${idEditando}` : '/api/registros';
+            const method = idEditando ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario_id: usuarioId, titulo, descripcion, categoria, estado })
+                });
+                const data = await res.json();
+                
+                if(res.ok) {
+                    document.getElementById('mensajeRespuesta').style.color = '#16a34a';
+                    document.getElementById('mensajeRespuesta').innerText = idEditando ? '¡Artículo modificado con éxito!' : '¡Artículo publicado con éxito!';
+                    
+                    form.reset();
+                    document.getElementById('editandoId').value = '';
+                    document.getElementById('tituloFormulario').innerText = 'Redactar Nuevo Artículo';
+                    document.getElementById('btnSubmit').innerText = 'Publicar Artículo en BD';
+                    document.getElementById('btnSubmit').style.backgroundColor = '#2563eb';
+                    
+                    cargarRegistros();
+                } else {
+                    document.getElementById('mensajeRespuesta').style.color = '#dc2626';
+                    document.getElementById('mensajeRespuesta').innerText = data.error || 'Error al procesar la solicitud';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('mensajeRespuesta').style.color = '#dc2626';
+                document.getElementById('mensajeRespuesta').innerText = 'Error de conexión';
+            }
+        });
+
+        // Inicializar
+        cargarCategorias();
+        cargarRegistros();
+    </script>
+</body>
+</html>
