@@ -1,6 +1,9 @@
 const db = require('../config/db');
 const bcrypt = require('bcrypt'); // <-- 1. Importamos bcrypt
 
+// Objeto temporal en memoria para llevar los intentos fallidos por correo
+const intentosLogin = {};
+
 // Obtener todos los usuarios
 const obtenerUsuarios = async (req, res) => {
   try {
@@ -35,26 +38,60 @@ const crearUsuario = async (req, res) => {
   }
 };
 
-// Iniciar Sesión (Login validando con Hash)
+// Iniciar Sesión (Login validando con Hash y Control de Intentos)
 const loginUsuario = async (req, res) => {
   const { email, password } = req.body;
+  const ahora = Date.now();
+
+  // 1. Verificar si el usuario está bloqueado temporalmente por agotar sus intentos
+  if (intentosLogin[email] && intentosLogin[email].bloqueadoHasta > ahora) {
+    const minutosRestantes = Math.ceil((intentosLogin[email].bloqueadoHasta - ahora) / 60000);
+    return res.status(429).json({ 
+      error: `Demasiados intentos fallidos. Cuenta bloqueada temporalmente. Inténtalo en ${minutosRestantes} minuto(s).` 
+    });
+  }
+
   try {
-    // 3. Buscamos al usuario solo por su correo
+    // 2. Buscamos al usuario solo por su correo
     const resultado = await db.query(
       'SELECT * FROM usuarios WHERE email = $1',
       [email]
     );
 
     if (resultado.rows.length === 0) {
-      return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
     const usuario = resultado.rows[0];
 
-    // 4. Comparamos la contraseña escrita con el hash de la base de datos
+    // 3. Comparamos la contraseña escrita con el hash de la base de datos
     const passwordMatch = await bcrypt.compare(password, usuario.password);
     if (!passwordMatch) {
-      return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
+      // Inicializar el registro de intentos si no existe para este correo
+      if (!intentosLogin[email]) {
+        intentosLogin[email] = { count: 0, bloqueadoHasta: 0 };
+      }
+
+      intentosLogin[email].count += 1;
+      const intentosRestantes = 5 - intentosLogin[email].count;
+
+      if (intentosRestantes <= 0) {
+        // Bloquear por 15 minutos (15 * 60 * 1000 ms)
+        intentosLogin[email].bloqueadoHasta = ahora + (15 * 60 * 1000);
+        intentosLogin[email].count = 0; // Reiniciar contador para el siguiente ciclo
+        return res.status(429).json({ 
+          error: 'Has agotado los 5 intentos permitidos. Tu cuenta ha sido bloqueada por 15 minutos.' 
+        });
+      }
+
+      return res.status(401).json({ 
+        error: `Usuario o contraseña incorrectos. Te quedan ${intentosRestantes} intentos.` 
+      });
+    }
+
+    // Si el login es exitoso, limpiamos el contador de intentos fallidos de este usuario
+    if (intentosLogin[email]) {
+      delete intentosLogin[email];
     }
 
     // Quitamos la contraseña del objeto que devolvemos al frontend por seguridad
