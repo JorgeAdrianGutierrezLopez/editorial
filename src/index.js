@@ -1,6 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const path = require('path');
+const rateLimit = require('express-rate-limit'); // <--- 1. Importar express-rate-limit
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,22 @@ app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos estáticos desde la carpeta "public"
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ==========================================
+// SEGURIDAD: PROTECCIÓN CONTRA FUERZA BRUTA
+// ==========================================
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // Ventana de 15 minutos
+    max: 5, // Máximo 5 intentos fallidos permitidos
+    message: {
+        error: 'Demasiados intentos de inicio de sesión. Por seguridad, tu IP ha sido bloqueada temporalmente por 15 minutos.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Aplicar el limitador exclusivamente a la ruta de login de la API
+app.use('/api/usuarios/login', loginLimiter); // <--- 2. Aplicar el filtro aquí
 
 // ==========================================
 // RUTAS DE VISTAS (FRONTEND)
