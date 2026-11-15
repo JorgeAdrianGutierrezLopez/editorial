@@ -1,76 +1,67 @@
-const express = require('express');
-const { Pool } = require('pg');
-const path = require('path');
-const rateLimit = require('express-rate-limit'); // <--- 1. Importar express-rate-limit
+// Objeto temporal en memoria para llevar los intentos por correo (puedes ajustarlo)
+const intentosLogin = {};
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Configuración de conexión segura (SSL forzado para Clever Cloud)
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
+const loginUsuario = async (req, res) => {
+    const { email, password } = req.body;
+    
+    // Verificar si el usuario está bloqueado temporalmente
+    const ahora = Date.now();
+    if (intentosLogin[email] && intentosLogin[email].bloqueadoHasta > ahora) {
+        const minutosRestantes = Math.ceil((intentosLogin[email].bloqueadoHasta - ahora) / 60000);
+        return res.status(429).json({ 
+            error: `Demasiados intentos fallidos. Cuenta bloqueada temporalmente. Inténtalo en ${minutosRestantes} minutos.` 
+        });
     }
-});
 
-// Middlewares
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Servir archivos estáticos desde la carpeta "public"
-app.use(express.static(path.join(__dirname, 'public')));
-
-// ==========================================
-// SEGURIDAD: PROTECCIÓN CONTRA FUERZA BRUTA
-// ==========================================
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // Ventana de 15 minutos
-    max: 5, // Máximo 5 intentos fallidos permitidos
-    message: {
-        error: 'Demasiados intentos de inicio de sesión. Por seguridad, tu IP ha sido bloqueada temporalmente por 15 minutos.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-// Aplicar el limitador exclusivamente a la ruta de login de la API
-app.use('/api/usuarios/login', loginLimiter); // <--- 2. Aplicar el filtro aquí
-
-// ==========================================
-// RUTAS DE VISTAS (FRONTEND)
-// ==========================================
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-
-// ==========================================
-// RUTAS DE LA API - CATEGORÍAS
-// ==========================================
-app.get('/api/categorias', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM categorias ORDER BY id ASC');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error al obtener categorías' });
+        // Buscar usuario en la base de datos
+        const resultado = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+        
+        if (resultado.rows.length === 0) {
+            return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
+        }
+
+        const usuario = resultado.rows[0];
+        const passwordMatch = await bcrypt.compare(password, usuario.password);
+
+        if (!passwordMatch) {
+            // Inicializar el registro de intentos si no existe
+            if (!intentosLogin[email]) {
+                intentosLogin[email] = { count: 0, bloqueadoHasta: 0 };
+            }
+
+            intentosLogin[email].count += 1;
+            const intentosRestantes = 5 - intentosLogin[email].count;
+
+            if (intentosRestantes <= 0) {
+                // Bloquear por 15 minutos
+                intentosLogin[email].bloqueadoHasta = ahora + (15 * 60 * 1000);
+                intentosLogin[email].count = 0; // Reiniciar contador para el próximo ciclo
+                return res.status(429).json({ 
+                    error: 'Has agotado los 5 intentos permitidos. Tu cuenta ha sido bloqueada por 15 minutos.' 
+                });
+            }
+
+            return res.status(401).json({ 
+                error: `Usuario o contraseña incorrectos. Te quedan ${intentosRestantes} intentos.` 
+            });
+        }
+
+        // Si el login es exitoso, reiniciamos el contador de intentos fallidos
+        if (intentosLogin[email]) {
+            delete intentosLogin[email];
+        }
+
+        // Quitar la contraseña del objeto que devolvemos al frontend por seguridad
+        const { password: _, ...usuarioSinPassword } = usuario;
+
+        res.status(200).json({
+            mensaje: 'Login exitoso',
+            usuario: usuarioSinPassword
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error en el servidor al iniciar sesión' });
     }
-});
-
-// ==========================================
-// IMPORTAR RUTAS EXTERNAS
-// ==========================================
-const userRoutes = require('./routes/userRoutes'); 
-const registroRoutes = require('./routes/registroRoutes'); 
-
-app.use('/api/usuarios', userRoutes);
-app.use('/api/registros', registroRoutes);
-
-// Iniciar servidor
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
+};
