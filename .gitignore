@@ -1,0 +1,11 @@
+# Dependencias (se reinstalan con npm install)
+node_modules/
+
+# Secretos: NUNCA se suben al repositorio
+.env
+.env.*
+
+# Archivos del sistema y de editores
+.DS_Store
+Thumbs.db
+*.log
